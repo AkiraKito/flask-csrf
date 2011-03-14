@@ -11,7 +11,7 @@
 
 from uuid import uuid4
 from flask import abort, request, session, g
-from werkzeug.routing import NotFound
+from werkzeug.routing import NotFound, HTTPException
 
 
 _exempt_views = []
@@ -34,10 +34,13 @@ def csrf(app, on_csrf=None):
         if not g._csrf_exempt:
             if request.method == "POST":
                 csrf_token = session.pop('_csrf_token', None)
-                if not csrf_token or csrf_token != request.form.get('_csrf_token'):
-                    if on_csrf:
-                        on_csrf(*app.match_request())
-                    abort(400)
+                try:
+                    if not csrf_token or csrf_token != request.form.get('_csrf_token'):
+                        if on_csrf:
+                            on_csrf(*app.match_request())
+                        abort(400)
+                except HTTPException, err:
+                    return app.handle_http_exception(err)
     
     def generate_csrf_token():
         if '_csrf_token' not in session:
